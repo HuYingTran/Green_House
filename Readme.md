@@ -17,3 +17,6 @@ change to
 
 ## Select configuration for esp32-wifi
 ![alt text](image.png)
+
+## System
+![](system.png)
