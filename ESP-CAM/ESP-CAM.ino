@@ -8,6 +8,7 @@
 #include "soc/rtc_cntl_reg.h" // Vô hiệu hóa sự cố mất điện 
 #include "driver/rtc_io.h" 
 
+#include "BluetoothSerial.h"
 #include "WiFiUdp.h"
 #include "WiFi.h"
 #include "HTTPClient.h"
@@ -18,6 +19,9 @@ const char *ssid_wifi = "HuynhTran";
 const char *pass_wifi = "Huynh123";
 const char *ssid_tello = "drone_tello";
 const char *pass_tello = "Huynh123";
+
+BluetoothSerial SerialBT;
+uint8_t SMA[6] = {0xCC, 0xDB, 0xA7, 0x3F, 0x6F, 0x6A}; // address MAC ESP32-Wifi
 
 WiFiUDP udp;
 const char* TELLO_IP = "192.168.10.1";
@@ -358,8 +362,25 @@ void loop() {
       control_drone_TELLO();
       ripeness = (ripeness_cam + ripeness_tello)/2;
       delay(1000);
+      
+      // send_esp_wifi(ripeness);
+      if (!SerialBT.begin("ESP32-BT-Master", true))
+      {
+        Serial.println("An error occurred initializing Bluetooth");
+        ESP.restart();
+      }
+      bool connected = SerialBT.connect(SMA);
+      if (connected){
+        Serial.println("Connected Successfully!");
+        SerialBT.print(ripeness);
+      }else{
+        Serial.println("Can't Connect!");
+        ESP.restart();
+      }
+      delay(1000);
+      SerialBT.end();
+      delay(1000);
       wifi_connect_ap(ssid_wifi, pass_wifi);
     }
-    // send_esp_wifi(ripeness);
   }
 }
