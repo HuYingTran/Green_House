@@ -29,7 +29,10 @@ void btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
     Serial.printf("ESP_SPP_DATA_IND_EVT len=%d, handle=%d\n\n", param->data_ind.len, param->data_ind.handle);
     String stringRead = String(*param->data_ind.data);
     int ripeness = stringRead.toInt() - 48;
-    Serial.printf("Tomatos ripeness: %d %\n", ripeness);
+    if(ripeness>=0){
+      Serial.printf("Tomatos ripeness: %d %\n", ripeness);
+      delay(1000);
+    }
   }
 }
 
