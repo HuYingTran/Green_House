@@ -28,11 +28,11 @@ const char* TELLO_IP = "192.168.10.1";
 const int TELLO_PORT = 8889;
 const int LOCAL_PORT = 9000;
 
-const char *serverName = "https://detect.roboflow.com/esp32-czges/1?api_key=4NITBHY9LYoMI89e45kx";
+const char *serverName = "https://detect.roboflow.com/esp32-czges/1?api_key=FW1NoA7cKPA9GWYkP1SC";
 
 unsigned long previousMillis = 0;  // Lưu thời gian lần cuối tín hiệu được phát
 const unsigned long interval = 4 * 60 * 1000;  // 4 phút (4 phút * 60 giây * 1000 ms)
-const unsigned long interval_wifi = 2 * 60 * 1000;
+const unsigned long interval_wifi = 2 * 60 * 100;
 
 float ripeness_cam;
 float ripeness_tello = 0;
@@ -42,6 +42,7 @@ void setup() {
   wifi_connect_ap(ssid_wifi, pass_wifi);
 
   udp.begin(LOCAL_PORT);
+  initCamera();
 }
 bool tello_wifi = true;
 void wifi_connect_ap(const char *ssid, const char *pass)
@@ -95,15 +96,8 @@ void initCamera()
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
   // init with high specs to pre-allocate larger buffers
-  if (psramFound())
   {
-    config.frame_size = FRAMESIZE_UXGA;
-    config.jpeg_quality = 10;
-    config.fb_count = 2;
-  }
-  else
-  {
-    config.frame_size = FRAMESIZE_SVGA;
+    config.frame_size = FRAMESIZE_QVGA;
     config.jpeg_quality = 12;
     config.fb_count = 1;
   }
@@ -133,33 +127,11 @@ String Photo2Base64()
   {
     base_64_encode(output, (input++), 3);
     if (i % 3 == 0)
-      imageFile += urlencode(String(output));
+      imageFile += String(output);
   }
   esp_camera_fb_return(fb);
-  esp_camera_deinit();
+//  esp_camera_deinit();
   return imageFile;
-}
-
-String urlencode(String str)
-{
-  const char *msg = str.c_str();
-  const char *hex = "0123456789ABCDEF";
-  String encodedMsg = "";
-  while (*msg != '\0')
-  {
-    if (('a' <= *msg && *msg <= 'z') || ('A' <= *msg && *msg <= 'Z') || ('0' <= *msg && *msg <= '9') || *msg == '-' || *msg == '_' || *msg == '.' || *msg == '~')
-    {
-      encodedMsg += *msg;
-    }
-    else
-    {
-      encodedMsg += '%';
-      encodedMsg += hex[(unsigned char)*msg >> 4];
-      encodedMsg += hex[*msg & 0xf];
-    }
-    msg++;
-  }
-  return encodedMsg;
 }
 
 float http_robotflow(String raw)
@@ -337,7 +309,7 @@ void readPhotoFromSD(const char* path) {
   {
     base_64_encode(output, (input++), 3);
     if (i % 3 == 0)
-      imageFile += urlencode(String(output));
+      imageFile += String(output);
   }
 
   free(imageBuffer);  // Giải phóng bộ nhớ sau khi sử dụng
@@ -352,17 +324,19 @@ void loop() {
   unsigned long currentMillis = millis(); // Lấy thời gian hiện tại
 
   // Kiểm tra nếu đủ 4 phút (240000 ms)
-  if (currentMillis - previousMillis >= interval/4) 
+  if (currentMillis - previousMillis >= interval/10) 
   {
     previousMillis = currentMillis;  // Cập nhật thời gian
     String image_str = Photo2Base64();
     
     float ripeness = http_robotflow(image_str);
-    if(ripeness_cam > 30){
+    if(ripeness > 30){
+      WiFi.disconnect(true);
       control_drone_TELLO();
-      ripeness = (ripeness_cam + ripeness_tello)/2;
+      ripeness = (ripeness + ripeness_tello)/2;
       delay(1000);
-      
+      wifi_connect_ap(ssid_wifi, pass_wifi);
+    }
       // send_esp_wifi(ripeness);
       if (!SerialBT.begin("ESP32-BT-Master", true))
       {
@@ -380,7 +354,5 @@ void loop() {
       delay(1000);
       SerialBT.end();
       delay(1000);
-      wifi_connect_ap(ssid_wifi, pass_wifi);
-    }
   }
 }
